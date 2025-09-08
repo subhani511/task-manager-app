@@ -18,7 +18,7 @@ app.use(cookieParser());
    ======================= */
 const whitelist = [
   "http://localhost:5173", // local dev
-  "https://task-manager-app-as3e.vercel.app", // deployed frontend on Vercel
+  "https://task-manager-app-z5zh.vercel.app", // deployed frontend on Vercel
 ];
 
 const corsOptions = {
