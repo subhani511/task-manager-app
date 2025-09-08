@@ -26,13 +26,32 @@ export const login = asyncHandler(async (req, res) => {
   if (!email || !password)
     return res.status(400).json({ message: "Missing fields" });
 
-  const user = await User.findOne({ email });
+  // make sure password is selected (in case schema uses select: false)
+  const user = await User.findOne({ email }).select("+password");
   if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-  const token = generateToken({ id: user._id });
+  // Minimal safety checks — do not change logic
+  if (!process.env.JWT_SECRET) {
+    console.error("login: JWT_SECRET is not set in env");
+    return res.status(500).json({ message: "Server configuration error" });
+  }
+
+  let token;
+  try {
+    token = generateToken({ id: user._id });
+  } catch (err) {
+    console.error("login: generateToken failed:", err);
+    return res.status(500).json({ message: "Token generation failed" });
+  }
+
+  if (!token) {
+    console.error("login: token is falsy after generateToken");
+    return res.status(500).json({ message: "Token generation failed" });
+  }
+
   const cookieName = process.env.COOKIE_NAME || "task_auth";
   const isProd = process.env.NODE_ENV === "production";
 

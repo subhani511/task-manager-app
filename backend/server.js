@@ -13,15 +13,38 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS - allow frontend origin and credentials
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
-app.use(
-  cors({
-    origin: FRONTEND_ORIGIN,
-    credentials: true,
-  })
-);
+/* =======================
+   CORS CONFIGURATION
+   ======================= */
+const raw =
+  process.env.FRONTEND_ORIGINS ||
+  process.env.FRONTEND_ORIGIN ||
+  "http://localhost:5173";
 
+const whitelist = raw
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+console.log("CORS whitelist:", whitelist);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow Postman/curl
+    if (whitelist.includes(origin)) return callback(null, true);
+    console.warn("Blocked by CORS:", origin);
+    return callback(new Error("Not allowed by CORS: " + origin));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+/* =======================
+   ROUTES
+   ======================= */
 app.get("/", (req, res) =>
   res.json({ ok: true, env: process.env.NODE_ENV || "development" })
 );
@@ -29,8 +52,12 @@ app.get("/", (req, res) =>
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
+// Error handler
 app.use(errorHandler);
 
+/* =======================
+   SERVER START
+   ======================= */
 const PORT = process.env.PORT || 5000;
 
 (async () => {
