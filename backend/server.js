@@ -16,21 +16,16 @@ app.use(cookieParser());
 /* =======================
    CORS CONFIGURATION
    ======================= */
-const raw =
-  process.env.FRONTEND_ORIGINS ||
-  process.env.FRONTEND_ORIGIN ||
-  "http://localhost:5173";
-
-const whitelist = raw
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-console.log("CORS whitelist:", whitelist);
+const whitelist = [
+  "http://localhost:5173", // local dev
+  "https://task-manager-app-as3e.vercel.app", // deployed frontend on Vercel
+];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow Postman/curl
-    if (whitelist.includes(origin)) return callback(null, true);
+    if (!origin || whitelist.includes(origin)) {
+      return callback(null, true);
+    }
     console.warn("Blocked by CORS:", origin);
     return callback(new Error("Not allowed by CORS: " + origin));
   },
