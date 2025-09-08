@@ -1,0 +1,28 @@
+# Node modules (frontend + backend)
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Environment variables (frontend + backend)
+.env
+.env.*.local
+backend/.env
+frontend/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
