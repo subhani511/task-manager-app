@@ -6,7 +6,6 @@ import TaskForm from "../components/TaskForm";
 const STATUS = ["todo", "inprogress", "done"];
 const TITLE = { todo: "To Do", inprogress: "In Progress", done: "Done" };
 
-// Badge classes for counts (Tailwind)
 const COUNT_CLASSES = {
   todo: "bg-blue-100 text-blue-800",
   inprogress: "bg-yellow-100 text-yellow-800",
@@ -86,7 +85,6 @@ export default function Board() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">{TITLE[s]}</h2>
               <div>
-                {/* Colored count badge */}
                 <span
                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-sm font-medium ${COUNT_CLASSES[s]}`}
                   aria-label={`${TITLE[s]} count`}

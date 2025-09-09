@@ -1,7 +1,22 @@
+// backend/controllers/authController.js
 import asyncHandler from "express-async-handler";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import generateToken from "../utils/generateToken.js";
+
+// helper: sign access token (short-lived)
+const signAccessToken = (payload) => {
+  const secret = process.env.JWT_SECRET;
+  const expiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
+  return jwt.sign(payload, secret, { expiresIn });
+};
+
+// helper: sign refresh token (longer-lived)
+const signRefreshToken = (payload) => {
+  const secret = process.env.JWT_SECRET;
+  const expiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
+  return jwt.sign(payload, secret, { expiresIn });
+};
 
 // POST /api/auth/register
 export const register = asyncHandler(async (req, res) => {
@@ -26,62 +41,80 @@ export const login = asyncHandler(async (req, res) => {
   if (!email || !password)
     return res.status(400).json({ message: "Missing fields" });
 
-  // make sure password is selected (in case schema uses select: false)
   const user = await User.findOne({ email }).select("+password");
   if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-  // Minimal safety checks — do not change logic
   if (!process.env.JWT_SECRET) {
     console.error("login: JWT_SECRET is not set in env");
     return res.status(500).json({ message: "Server configuration error" });
   }
 
-  let token;
-  try {
-    token = generateToken({ id: user._id });
-  } catch (err) {
-    console.error("login: generateToken failed:", err);
-    return res.status(500).json({ message: "Token generation failed" });
-  }
+  // create tokens
+  const accessToken = signAccessToken({ id: user._id, type: "access" });
+  const refreshToken = signRefreshToken({ id: user._id, type: "refresh" });
 
-  if (!token) {
-    console.error("login: token is falsy after generateToken");
-    return res.status(500).json({ message: "Token generation failed" });
-  }
-
-  const cookieName = process.env.COOKIE_NAME || "task_auth";
+  const cookieName = process.env.COOKIE_NAME || "task_auth_refresh";
   const isProd = process.env.NODE_ENV === "production";
 
-  res.cookie(cookieName, token, {
+  // set refresh token as httpOnly cookie (used only by /refresh)
+  res.cookie(cookieName, refreshToken, {
     httpOnly: true,
-    secure: isProd, // true in production (HTTPS)
+    secure: isProd, // https only in prod
     sameSite: isProd ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // match REFRESH_TOKEN_EXPIRES_IN (7d default)
+    path: "/api/auth/refresh", // restrict cookie to refresh path (optional but recommended)
   });
 
-  res.json({ id: user._id, name: user.name, email: user.email });
+  // return short-lived access token and user info
+  res.json({
+    accessToken,
+    user: { id: user._id, name: user.name, email: user.email },
+  });
+});
+
+// POST /api/auth/refresh
+export const refresh = asyncHandler(async (req, res) => {
+  const cookieName = process.env.COOKIE_NAME || "task_auth_refresh";
+  const token = req.cookies?.[cookieName];
+
+  if (!token) return res.status(401).json({ message: "No refresh token" });
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (!payload || payload.type !== "refresh") {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+    const userId = payload.id;
+
+    // optional: you can check a token store or user's token version here
+
+    const newAccessToken = signAccessToken({ id: userId, type: "access" });
+    return res.json({ accessToken: newAccessToken });
+  } catch (err) {
+    console.error("refresh token error:", err);
+    return res.status(401).json({ message: "Invalid refresh token" });
+  }
 });
 
 // POST /api/auth/logout
 export const logout = asyncHandler(async (req, res) => {
-  const cookieName = process.env.COOKIE_NAME || "task_auth";
+  const cookieName = process.env.COOKIE_NAME || "task_auth_refresh";
   res.cookie(cookieName, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     expires: new Date(0),
-    path: "/",
+    path: "/api/auth/refresh",
   });
   res.json({ message: "Logged out" });
 });
 
 // GET /api/auth/me
 export const me = asyncHandler(async (req, res) => {
-  // protect middleware sets req.user
+  // protect middleware sets req.user (you can update protect to read Authorization Bearer token)
   if (!req.user) return res.status(401).json({ message: "Not authenticated" });
   res.json(req.user);
 });

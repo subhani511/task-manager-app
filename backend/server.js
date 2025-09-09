@@ -1,3 +1,4 @@
+// server.js
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -14,18 +15,41 @@ app.use(express.json());
 app.use(cookieParser());
 
 /* =======================
-   CORS CONFIGURATION
+   CORS CONFIGURATION (env-driven)
    ======================= */
-const whitelist = [
-  "http://localhost:5173", // local dev
-  "https://task-manager-app-z5zh.vercel.app", // deployed frontend on Vercel
-];
+const getWhitelist = () => {
+  const raw = process.env.FRONTEND_ORIGINS || process.env.FRONTEND_URL || "";
+  // allow comma-separated origins (trim spaces)
+  const list = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // ensure localhost dev is allowed
+  if (!list.includes("http://localhost:5173")) {
+    list.unshift("http://localhost:5173");
+  }
+  return list;
+};
+
+const whitelist = getWhitelist();
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || whitelist.includes(origin)) {
-      return callback(null, true);
+    // allow non-browser requests (curl, Postman) where origin is undefined
+    if (!origin) return callback(null, true);
+
+    // exact whitelist match
+    if (whitelist.includes(origin)) return callback(null, true);
+
+    // allow any Vercel preview domain (*.vercel.app)
+    try {
+      const url = new URL(origin);
+      if (url.hostname.endsWith(".vercel.app")) return callback(null, true);
+    } catch (e) {
+      // ignore parse errors
     }
+
     console.warn("Blocked by CORS:", origin);
     return callback(new Error("Not allowed by CORS: " + origin));
   },
@@ -47,7 +71,7 @@ app.get("/", (req, res) =>
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
-// Error handler
+// Error handler (should be last)
 app.use(errorHandler);
 
 /* =======================
@@ -59,7 +83,9 @@ const PORT = process.env.PORT || 5000;
   try {
     await connectDB(process.env.MONGO_URI);
     app.listen(PORT, () =>
-      console.log(`Server started on port ${PORT} ✅✅✅`)
+      console.log(
+        `Server started on port ${PORT} ✅ (NODE_ENV=${process.env.NODE_ENV})`
+      )
     );
   } catch (err) {
     console.error("Failed to start server:", err);

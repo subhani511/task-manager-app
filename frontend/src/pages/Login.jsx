@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/apiClient";
+import { setAccessToken } from "../lib/auth";
 
 export default function Login() {
-  const [email, setEmail] = useState(""); // empty default
-  const [password, setPassword] = useState(""); // empty default
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const nav = useNavigate();
 
@@ -12,7 +13,14 @@ export default function Login() {
     e.preventDefault();
     setError("");
     try {
-      await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", { email, password });
+      // store access token in memory for the axios interceptor to use
+      setAccessToken(res.data.accessToken);
+
+      // optional: clear form
+      setEmail("");
+      setPassword("");
+
       nav("/board");
     } catch (err) {
       setError(err?.response?.data?.message || "Login failed");
