@@ -21,14 +21,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// refresh on 401 and retry once (skip login/register)
+// refresh on 401 and retry once (skip login/register/refresh)
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const original = err.config;
     const skipAuth =
       original?.url.includes("/auth/login") ||
-      original?.url.includes("/auth/register");
+      original?.url.includes("/auth/register") ||
+      original?.url.includes("/auth/refresh"); // ✅ prevent infinite loop
 
     if (err.response?.status === 401 && !original?._retry && !skipAuth) {
       original._retry = true;
@@ -42,6 +43,8 @@ api.interceptors.response.use(
         }
       } catch (e) {
         clearAccessToken();
+        // optional redirect to login
+        window.location.href = "/login";
       }
     }
     return Promise.reject(err);

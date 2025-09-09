@@ -80,21 +80,26 @@ export const refresh = asyncHandler(async (req, res) => {
   const cookieName = process.env.COOKIE_NAME || "task_auth_refresh";
   const token = req.cookies?.[cookieName];
 
-  if (!token) return res.status(401).json({ message: "No refresh token" });
+  if (!token) {
+    return res.status(401).json({ message: "No refresh token" });
+  }
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    // ✅ Ensure this endpoint only accepts refresh tokens
     if (!payload || payload.type !== "refresh") {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
+
     const userId = payload.id;
 
-    // optional: you can check a token store or user's token version here
-
+    // issue new short-lived access token
     const newAccessToken = signAccessToken({ id: userId, type: "access" });
+
     return res.json({ accessToken: newAccessToken });
   } catch (err) {
-    console.error("refresh token error:", err);
+    console.error("refresh token error:", err.message);
     return res.status(401).json({ message: "Invalid refresh token" });
   }
 });
