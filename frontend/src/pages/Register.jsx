@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../api/apiClient";
 
 export default function Register() {
@@ -14,6 +14,12 @@ export default function Register() {
     setError("");
     try {
       await api.post("/auth/register", { name, email, password });
+
+      // clear form
+      setName("");
+      setEmail("");
+      setPassword("");
+
       // after register, navigate to login
       nav("/login");
     } catch (err) {
@@ -26,16 +32,20 @@ export default function Register() {
       <h2 className="text-2xl font-semibold mb-4">Register</h2>
       <form onSubmit={submit} className="space-y-4">
         <input
+          type="text"
           className="w-full border px-3 py-2 rounded"
           placeholder="Full name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          required
         />
         <input
+          type="email"
           className="w-full border px-3 py-2 rounded"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
         />
         <input
           type="password"
@@ -43,15 +53,19 @@ export default function Register() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
         {error && <div className="text-red-600">{error}</div>}
         <div className="flex justify-between items-center">
-          <button className="bg-indigo-600 text-white px-4 py-2 rounded">
+          <button
+            type="submit"
+            className="bg-indigo-600 text-white px-4 py-2 rounded"
+          >
             Register
           </button>
-          <a className="text-sm text-gray-600" href="/login">
+          <Link to="/login" className="text-sm text-gray-600 hover:underline">
             Login
-          </a>
+          </Link>
         </div>
       </form>
     </div>

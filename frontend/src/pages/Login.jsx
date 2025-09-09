@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../api/apiClient";
 import { setAccessToken } from "../lib/auth";
 
@@ -12,16 +12,22 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+
     try {
       const res = await api.post("/auth/login", { email, password });
-      // store access token in memory for the axios interceptor to use
-      setAccessToken(res.data.accessToken);
 
-      // optional: clear form
+      // adjust this key depending on your backend response
+      const token = res.data?.accessToken || res.data?.token;
+      if (token) {
+        setAccessToken(token);
+        nav("/board"); // redirect after login
+      } else {
+        setError("No token received from server");
+      }
+
+      // clear form
       setEmail("");
       setPassword("");
-
-      nav("/board");
     } catch (err) {
       setError(err?.response?.data?.message || "Login failed");
     }
@@ -32,10 +38,12 @@ export default function Login() {
       <h2 className="text-2xl font-semibold mb-4">Login</h2>
       <form onSubmit={submit} className="space-y-4">
         <input
+          type="email"
           className="w-full border px-3 py-2 rounded"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
         />
         <input
           type="password"
@@ -43,15 +51,22 @@ export default function Login() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
         {error && <div className="text-red-600">{error}</div>}
         <div className="flex justify-between items-center">
-          <button className="bg-indigo-600 text-white px-4 py-2 rounded">
+          <button
+            type="submit"
+            className="bg-indigo-600 text-white px-4 py-2 rounded"
+          >
             Login
           </button>
-          <a className="text-sm text-gray-600" href="/register">
+          <Link
+            to="/register"
+            className="text-sm text-gray-600 hover:underline"
+          >
             Register
-          </a>
+          </Link>
         </div>
       </form>
     </div>
