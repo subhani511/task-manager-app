@@ -26,9 +26,10 @@ export default function Board() {
     setLoading(true);
     try {
       const res = await api.get("/tasks");
-      setTasks(res.data);
+      setTasks(res.data || []);
     } catch (err) {
       console.error(err);
+      setTasks([]);
     }
     setLoading(false);
   }
@@ -97,6 +98,8 @@ export default function Board() {
             <div className="space-y-2">
               {loading ? (
                 <div className="text-slate-500">Loading...</div>
+              ) : tasks.filter((t) => t.status === s).length === 0 ? (
+                <div className="text-slate-500">No tasks</div>
               ) : (
                 tasks
                   .filter((t) => t.status === s)

@@ -6,14 +6,14 @@ const API_BASE =
 
 const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: true, // keep for refresh / cookie-based flows
+  withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
-// attach access token, but skip for login/register
 api.interceptors.request.use((config) => {
+  const url = config?.url || "";
   const skipAuth =
-    config.url.includes("/auth/login") || config.url.includes("/auth/register");
+    url.includes("/auth/login") || url.includes("/auth/register");
   if (!skipAuth) {
     const token = getAccessToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -21,30 +21,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// refresh on 401 and retry once (skip login/register/refresh)
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const original = err.config;
+    const url = original?.url || "";
     const skipAuth =
-      original?.url.includes("/auth/login") ||
-      original?.url.includes("/auth/register") ||
-      original?.url.includes("/auth/refresh"); // ✅ prevent infinite loop
+      url.includes("/auth/login") ||
+      url.includes("/auth/register") ||
+      url.includes("/auth/refresh");
 
     if (err.response?.status === 401 && !original?._retry && !skipAuth) {
       original._retry = true;
       try {
-        const r = await api.post("/auth/refresh"); // cookie sent automatically
+        const r = await api.post("/auth/refresh");
         const newAccess = r.data?.accessToken;
         if (newAccess) {
           setAccessToken(newAccess);
+          original.headers = original.headers || {};
           original.headers.Authorization = `Bearer ${newAccess}`;
           return api(original);
         }
       } catch (e) {
         clearAccessToken();
-        // optional redirect to login
-        window.location.href = "/login";
+        window.location.replace("/login");
       }
     }
     return Promise.reject(err);

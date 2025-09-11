@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
-router.post("/refresh", refresh); // <- make sure this exists and is imported
+router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.get("/me", protect, me);
 

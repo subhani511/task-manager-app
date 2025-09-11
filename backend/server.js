@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import connectDB from "./config/db.js";
+import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
 import taskRoutes from "./routes/tasks.js";
 import errorHandler from "./middlewares/errorHandler.js";
@@ -82,6 +83,7 @@ const PORT = process.env.PORT || 5000;
 (async () => {
   try {
     await connectDB(process.env.MONGO_URI);
+    console.log("MongoDB connected to DB:", mongoose.connection.name);
     app.listen(PORT, () =>
       console.log(
         `Server started on port ${PORT} ✅ (NODE_ENV=${process.env.NODE_ENV})`

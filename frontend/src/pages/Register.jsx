@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../api/apiClient";
+import { setAccessToken } from "../lib/auth";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -13,15 +14,23 @@ export default function Register() {
     e.preventDefault();
     setError("");
     try {
-      await api.post("/auth/register", { name, email, password });
+      const res = await api.post("/auth/register", { name, email, password });
 
-      // clear form
+      const token = res.data?.accessToken || res.data?.token;
+      if (token) {
+        setAccessToken(token);
+        localStorage.setItem(
+          "user",
+          JSON.stringify(res.data.user || { name, email })
+        );
+        nav("/board");
+      } else {
+        nav("/login");
+      }
+
       setName("");
       setEmail("");
       setPassword("");
-
-      // after register, navigate to login
-      nav("/login");
     } catch (err) {
       setError(err?.response?.data?.message || "Registration failed");
     }

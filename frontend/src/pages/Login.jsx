@@ -16,16 +16,18 @@ export default function Login() {
     try {
       const res = await api.post("/auth/login", { email, password });
 
-      // adjust this key depending on your backend response
       const token = res.data?.accessToken || res.data?.token;
       if (token) {
         setAccessToken(token);
-        nav("/board"); // redirect after login
+        localStorage.setItem(
+          "user",
+          JSON.stringify(res.data.user || { email })
+        );
+        nav("/board");
       } else {
         setError("No token received from server");
       }
 
-      // clear form
       setEmail("");
       setPassword("");
     } catch (err) {

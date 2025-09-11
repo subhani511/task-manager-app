@@ -15,6 +15,13 @@ const taskSchema = new mongoose.Schema(
       enum: ["todo", "inprogress", "done"],
       default: "todo",
     },
+    // <-- NEW: reference to the user who owns this task
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );

@@ -32,7 +32,31 @@ export const register = asyncHandler(async (req, res) => {
   const hashed = await bcrypt.hash(password, salt);
   const user = await User.create({ name, email, password: hashed });
 
-  res.status(201).json({ id: user._id, name: user.name, email: user.email });
+  if (!process.env.JWT_SECRET) {
+    console.error("register: JWT_SECRET is not set in env");
+    return res.status(500).json({ message: "Server configuration error" });
+  }
+
+  // Issue tokens (same behaviour as login -> auto authenticate on register)
+  const accessToken = signAccessToken({ id: user._id, type: "access" });
+  const refreshToken = signRefreshToken({ id: user._id, type: "refresh" });
+
+  const cookieName = process.env.COOKIE_NAME || "task_auth_refresh";
+  const isProd = process.env.NODE_ENV === "production";
+
+  res.cookie(cookieName, refreshToken, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/api/auth/refresh",
+  });
+
+  // Return accessToken and minimal user info
+  res.status(201).json({
+    accessToken,
+    user: { id: user._id, name: user.name, email: user.email },
+  });
 });
 
 // POST /api/auth/login
@@ -41,6 +65,7 @@ export const login = asyncHandler(async (req, res) => {
   if (!email || !password)
     return res.status(400).json({ message: "Missing fields" });
 
+  // if you set password select:false in model, ensure to select it explicitly here
   const user = await User.findOne({ email }).select("+password");
   if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
@@ -62,10 +87,10 @@ export const login = asyncHandler(async (req, res) => {
   // set refresh token as httpOnly cookie (used only by /refresh)
   res.cookie(cookieName, refreshToken, {
     httpOnly: true,
-    secure: isProd, // https only in prod
+    secure: isProd,
     sameSite: isProd ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // match REFRESH_TOKEN_EXPIRES_IN (7d default)
-    path: "/api/auth/refresh", // restrict cookie to refresh path (optional but recommended)
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/api/auth/refresh",
   });
 
   // return short-lived access token and user info
@@ -87,14 +112,12 @@ export const refresh = asyncHandler(async (req, res) => {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ Ensure this endpoint only accepts refresh tokens
     if (!payload || payload.type !== "refresh") {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
     const userId = payload.id;
 
-    // issue new short-lived access token
     const newAccessToken = signAccessToken({ id: userId, type: "access" });
 
     return res.json({ accessToken: newAccessToken });
@@ -119,7 +142,6 @@ export const logout = asyncHandler(async (req, res) => {
 
 // GET /api/auth/me
 export const me = asyncHandler(async (req, res) => {
-  // protect middleware sets req.user (you can update protect to read Authorization Bearer token)
   if (!req.user) return res.status(401).json({ message: "Not authenticated" });
   res.json(req.user);
 });
