@@ -12,6 +12,7 @@
     "@hello-pangea/dnd": "^18.0.1",
     "axios": "^1.4.0",
     "framer-motion": "^12.23.12",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.542.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",

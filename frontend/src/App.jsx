@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
@@ -12,17 +13,22 @@ export default function App() {
       <Navbar />
       <div className="container mx-auto p-4">
         <Routes>
+          {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Protected root route (Board) */}
           <Route
-            path="/board"
+            path="/"
             element={
               <ProtectedRoute>
                 <Board />
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/board" replace />} />
+
+          {/* Catch-all → redirect to root */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </div>
